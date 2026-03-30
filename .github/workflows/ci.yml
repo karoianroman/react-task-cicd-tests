@@ -78,9 +78,6 @@ jobs:
           image-ref: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           severity: CRITICAL,HIGH
           exit-code: '1'
-      - name: Debug flags
-        run: echo "--cpu=0.7 --memory=128Mi --max-instances=1"
-
 
       - name: 🚀 Deploy to Cloud Run
         id: deploy
@@ -90,7 +87,7 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           flags: >-
-            '--allow-unauthenticated'
+            --allow-unauthenticated
             --cpu=0.7
             --memory=128Mi
             --concurrency=1
