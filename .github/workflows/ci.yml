@@ -86,7 +86,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          flags: |
+          flags: >-
             '--allow-unauthenticated'
             cpu=0.7
             memory=128Mi
