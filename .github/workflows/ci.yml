@@ -1,0 +1,97 @@
+name: 🚀 Deploy to Google Cloud Run
+
+'on':
+  push:
+    branches:
+      - main
+      - master
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: europe-west1
+  SERVICE_NAME: react-app
+  REPOSITORY: react-repo
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: 🏗️ Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔐 Check for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔍 Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: 🔐 Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/992838171690/locations/global/workloadIdentityPools/github-actions-pool/providers/react-smoke-test'
+          service_account: 'github-actions-sa@repo-490410.iam.gserviceaccount.com'
+
+      - name: ⚙️ Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: 🐳 Docker Auth
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: 📦 Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: 📥 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔍 Lint
+        run: pnpm lint
+
+      - name: 📤 Build and Push Container
+        run: |
+          DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          docker build -t $DOCKER_TAG .
+          docker push $DOCKER_TAG
+
+      - name: 🛡️ Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: 🚀 Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: '--allow-unauthenticated'
+
+      - name: 🔥 Smoke test
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --format='value(status.url)')
+          echo "Testing: $URL"
+          curl -f --retry 5 --retry-delay 3 "$URL"
