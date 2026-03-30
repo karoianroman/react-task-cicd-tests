@@ -79,10 +79,8 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
       - name: Debug flags
-        run: |
-          cat << 'EOF'
-          ${{ env.DEPLOY_FLAGS }}
-          EOF
+        run: echo "--cpu=0.7 --memory=128Mi --max-instances=1"
+
 
       - name: 🚀 Deploy to Cloud Run
         id: deploy
