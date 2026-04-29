@@ -15,31 +15,31 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-🚀 CI/CD Pipeline & Security
+##🚀 CI/CD Pipeline & Security
 
-Цей проєкт використовує автоматизований цикл розробки через GitHub Actions. Кожен Push у гілку main запускає наступні етапи перевірки:
-🛡️ Security & Quality Gates
+This project implements a fully automated development lifecycle using GitHub Actions. Every push to the main branch triggers a comprehensive multi-stage pipeline:
+###🛡️ Security & Quality Gates
 
-    Gitleaks: Автоматичний пошук забутих секретів, API-ключів або паролів у коді.
+    Gitleaks: Automatically scans the repository for exposed secrets, API keys, or passwords.
 
-    Hadolint: Перевірка Dockerfile на відповідність кращим практикам оптимізації та безпеки.
+    Hadolint: Validates the Dockerfile against best practices for optimization and security.
 
-    Trivy Scan: Глибоке сканування зібраного Docker-образу на наявність вразливостей (CVE) перед деплоєм.
+    Trivy Scan: Performs a deep vulnerability scan (CVE) of the assembled Docker image before deployment.
 
-    ESLint: Перевірка якості коду та синтаксису.
+    ESLint: Ensures code quality and syntax consistency.
 
-🏗️ Deployment Flow
+###🏗️ Deployment Flow
 
-    Build: Проєкт збирається за допомогою pnpm та пакується в Docker контейнер.
+    Build: The application is built using pnpm and packaged into a Docker container.
 
-    Artifact Registry: Образ автоматично пушиться в Google Cloud Artifact Registry з тегом SHA коміту.
+    Artifact Registry: The image is automatically pushed to Google Cloud Artifact Registry, tagged with the specific Git commit SHA.
 
-    Cloud Run: Автоматичний деплой у безсерверне середовище Google Cloud.
+    Cloud Run: Fully automated deployment to a serverless environment on Google Cloud Platform.
 
-    Workload Identity Federation: Безпечна автентифікація в Google Cloud без використання статичних JSON-ключів.
+    Workload Identity Federation: Secure, keyless authentication to Google Cloud, eliminating the need for static JSON Service Account keys.
 
-🧪 Testing Strategy
+###🧪 Testing Strategy
 
-    Unit Tests: Запуск компонентних тестів перед збіркою образу.
+    Unit Tests: Component testing is executed before the container build phase to ensure logic integrity.
 
-    Smoke Test: Після деплою виконується фінальна перевірка доступності сервісу (HTTP 200 OK) за допомогою curl.
+    Smoke Test: A post-deployment check is performed using curl to verify service availability (HTTP 200 OK) at the live endpoint.
