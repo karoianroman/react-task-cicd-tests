@@ -1,45 +1,51 @@
-# React + Vite
+# React CI/CD & DevSecOps Showcase
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A professional demonstration of a secure, automated pipeline for deploying React applications to **Google Cloud Platform (GCP)** using **GitHub Actions**.
 
-Currently, two official plugins are available:
+## 🚀 Pipeline Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This repository implements a robust **DevSecOps** flow. Every push to `main` or `master` triggers a multi-stage process to ensure container security and reliable delivery to **Cloud Run**.
 
-## React Compiler
+## 🛠 Tech Stack
+- **Frontend:** React, Vite, pnpm
+- **Cloud:** Google Cloud Run, Artifact Registry
+- **CI/CD:** GitHub Actions
+- **Security Tools:** Gitleaks, Hadolint, Trivy
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🏗 CI/CD Workflow Stages
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 1. 🛡️ Security & Quality Checks
+* **Gitleaks:** Scans repository history for accidentally committed secrets or API keys.
+* **Hadolint:** Analyzes the `Dockerfile` to ensure it follows security and optimization best practices.
+* **ESLint:** Runs `pnpm lint` to maintain code style and catch potential bugs early.
 
-## 🚀 CI/CD Pipeline & Security
+### 2. 📦 Container Management
+* **Build & Push:** Uses Docker to package the application and pushes it to **GCP Artifact Registry** with a unique tag (Commit SHA).
+* **Workload Identity Federation:** Connects GitHub to GCP securely without static JSON keys.
 
-This project implements a fully automated development lifecycle using GitHub Actions. Every push to the main branch triggers a comprehensive multi-stage pipeline:
-### 🛡️ Security & Quality Gates
+### 3. 🛡️ Image Auditing
+* **Trivy Scan:** Performs a deep vulnerability scan on the final Docker image. The pipeline will fail if **CRITICAL** or **HIGH** vulnerabilities are detected.
 
-    Gitleaks: Automatically scans the repository for exposed secrets, API keys, or passwords.
+### 4. 🚀 Cloud Deployment
+* **Cloud Run:** Automatically deploys the container to a serverless environment in the `europe-west1` region.
+* **Verification (Smoke Test):** Once deployed, the pipeline runs a `curl` command against the live URL to verify that the service is up and responding (HTTP 200).
 
-    Hadolint: Validates the Dockerfile against best practices for optimization and security.
+---
 
-    Trivy Scan: Performs a deep vulnerability scan (CVE) of the assembled Docker image before deployment.
+## 🚦 How to Run Locally
 
-    ESLint: Ensures code quality and syntax consistency.
+1. **Install dependencies:**
+   ```bash
+   pnpm install
 
-### 🏗️ Deployment Flow
+    Start development server:
+    Bash
 
-    Build: The application is built using pnpm and packaged into a Docker container.
+    pnpm dev
 
-    Artifact Registry: The image is automatically pushed to Google Cloud Artifact Registry, tagged with the specific Git commit SHA.
+    Build Docker image:
+    Bash
 
-    Cloud Run: Fully automated deployment to a serverless environment on Google Cloud Platform.
-
-    Workload Identity Federation: Secure, keyless authentication to Google Cloud, eliminating the need for static JSON Service Account keys.
-
-### 🧪 Testing Strategy
-
-    Unit Tests: Component testing is executed before the container build phase to ensure logic integrity.
-
-    Smoke Test: A post-deployment check is performed using curl to verify service availability (HTTP 200 OK) at the live endpoint.
+    docker build -t react-app .
