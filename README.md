@@ -38,7 +38,7 @@ This project implements a fully automated development lifecycle using GitHub Act
 
     Workload Identity Federation: Secure, keyless authentication to Google Cloud, eliminating the need for static JSON Service Account keys.
 
-###🧪 Testing Strategy
+### 🧪 Testing Strategy
 
     Unit Tests: Component testing is executed before the container build phase to ensure logic integrity.
 
