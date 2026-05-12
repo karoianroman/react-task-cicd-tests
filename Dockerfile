@@ -1,5 +1,5 @@
 # 1. Етап збірки (Build stage)
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 RUN corepack enable pnpm
 WORKDIR /app
 COPY pnpm-lock.yaml package.json ./
@@ -13,7 +13,6 @@ FROM nginx:stable-alpine
 RUN apk upgrade --no-cache
 
 # КРОК 1: Змінюємо порт 80 на 8080 у стандартному конфігу Nginx
-# hadolint ignore=DL3059
 RUN sed -i 's/listen\(.*\)80;/listen 8080;/g' /etc/nginx/conf.d/default.conf
 
 COPY --from=build /app/dist /usr/share/nginx/html
