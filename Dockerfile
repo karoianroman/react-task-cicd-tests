@@ -9,7 +9,6 @@ RUN pnpm run build
 
 # 2. Етап запуску (Production stage)
 FROM nginx:stable-alpine
-# hadolint ignore=DL3059
 RUN apk upgrade --no-cache
 
 # КРОК 1: Змінюємо порт 80 на 8080 у стандартному конфігу Nginx
