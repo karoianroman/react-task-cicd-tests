@@ -1,5 +1,57 @@
+# Залежності — встановлюються через pnpm install --frozen-lockfile
 node_modules
+node_modules
+dist-ssr
+*.local
+
+# Build output — генерується через pnpm run build
 dist
+
+# Git
 .git
+.gitignore
+
+# CI/CD
 .github
+
+# Документація
 README.md
+*.md
+
+# Env-файли
+.env
+.env.*
+
+# Логи
+*.log
+npm-debug.log*
+pnpm-debug.log*
+logs
+*.log
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Coverage та тести (не потрібні в образі)
+coverage
+__tests__
+*.test.js
+*.spec.js
+*.test.jsx
+*.spec.jsx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

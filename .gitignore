@@ -1,21 +1,53 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
+# Залежності — встановлюються через pnpm install --frozen-lockfile
 node_modules
-dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Build output — генерується через pnpm run build
+dist
+
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# Документація
+README.md
+*.md
+
+# Env-файли
+.env
+.env.*
+
+# Логи
+*.log
+npm-debug.log*
+pnpm-debug.log*
+logs
+*.log
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Coverage та тести (не потрібні в образі)
+coverage
+__tests__
+*.test.js
+*.spec.js
+*.test.jsx
+*.spec.jsx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
 .vscode/*
 !.vscode/extensions.json
-.idea
 .DS_Store
 *.suo
 *.ntvs*
