@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    container_name: my-app
+    ports:
+      - "80:8080"
+    restart: unless-stopped
+
+    # Limits CPU and RAM
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"       # 50% one core
+          memory: 256M
+        reservations:
+          cpus: "0.25"      # garant minimum
+          memory: 128M
+
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Environment variables (if needed)
+    environment:
+      - NODE_ENV=production
