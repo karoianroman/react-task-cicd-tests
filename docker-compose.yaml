@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: my-app
+    container_name: React
     ports:
       - "80:8080"
     restart: unless-stopped
