@@ -1,55 +1,28 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: react-app
-    restart: unless-stopped
+    build: .
+    container_name: React
     ports:
-      - "8080:8080"
-    networks:
-      - app-network
+      - "80:8080"
+    restart: unless-stopped
+
+    # Limits CPU and RAM
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: "0.5"       # 50% one core
           memory: 256M
+        reservations:
+          cpus: "0.25"      # garant minimum
+          memory: 128M
+
+    # Log rotation
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
 
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer-data:/data
-    networks:
-      - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: 128M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-
-volumes:
-  portainer-data:
-
-networks:
-  app-network:
-    driver: bridge
+    # Environment variables (if needed)
+    environment:
+      - NODE_ENV=production
