@@ -5,16 +5,15 @@ services:
       dockerfile: Dockerfile
     container_name: react-app
     restart: unless-stopped
-    # Замість ports використовуємо expose, щоб приховати сервіс за Nginx
-    expose:
-      - "8080"
-    environment:
-      # Замініть YOUR_SERVER_IP на реальний IP вашого сервера
-      - VIRTUAL_HOST=app.35.241.228.193.nip.io
-      - VIRTUAL_PORT=8080
-      - LETSENCRYPT_HOST=app.35.241.228.193.nip.io
     networks:
       - app-network
+    labels:
+      - "traefik.enable=true"
+      # Замініть YOUR_SERVER_IP на ваш реальний IP
+      - "traefik.http.routers.app.rule=Host(`app.YOUR_SERVER_IP.nip.io`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.app.loadbalancer.server.port=8080"
     deploy:
       resources:
         limits:
@@ -35,18 +34,18 @@ services:
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
-    expose:
-      - "9000"
-    environment:
-      # Замініть YOUR_SERVER_IP на реальний IP вашого сервера
-      - VIRTUAL_HOST=portainer.YOUR_SERVER_IP.nip.io
-      - VIRTUAL_PORT=9000
-      - LETSENCRYPT_HOST=portainer.YOUR_SERVER_IP.nip.io
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer-data:/data
     networks:
       - app-network
+    labels:
+      - "traefik.enable=true"
+      # Замініть YOUR_SERVER_IP на ваш реальний IP
+      - "traefik.http.routers.portainer.rule=Host(`portainer.YOUR_SERVER_IP.nip.io`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
     deploy:
       resources:
         limits:
@@ -58,47 +57,38 @@ services:
         max-size: "5m"
         max-file: "2"
 
-  # --- Nginx Reverse Proxy ---
-  nginx-proxy:
-    image: nginxproxy/nginx-proxy:alpine
-    container_name: nginx-proxy
+  # --- Traefik Reverse Proxy ---
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
     restart: unless-stopped
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # Налаштування точок входу (HTTP та HTTPS)
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Автоматичний редирект з HTTP на HTTPS
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      # Налаштування Let's Encrypt (замініть email)
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=your_email@example.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - conf:/etc/nginx/conf.d
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - certs:/etc/nginx/certs:ro
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-    networks:
-      - app-network
-
-  # --- Let's Encrypt SSL Companion ---
-  acme-companion:
-    image: nginxproxy/acme-companion
-    container_name: nginx-acme-companion
-    restart: unless-stopped
-    environment:
-      # Вкажіть вашу реальну пошту для реєстрації сертифікатів Let's Encrypt
-      - DEFAULT_EMAIL=romashka99k@gmail.com
-    volumes_from:
-      - nginx-proxy
-    volumes:
-      - certs:/etc/nginx/certs:rw
-      - acme:/etc/acme.sh
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
     networks:
       - app-network
 
 volumes:
   portainer-data:
-  conf:
-  vhost:
-  html:
-  certs:
-  acme:
+  # Тепер для SSL потрібен лише один том
+  traefik-certs:
 
 networks:
   app-network:
