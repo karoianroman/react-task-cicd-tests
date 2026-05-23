@@ -1,28 +1,94 @@
 services:
   app:
-    build: .
-    container_name: React
-    ports:
-      - "80:8080"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: react-app
     restart: unless-stopped
-
-    # Limits CPU and RAM
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      # Додано префікс app. щоб домен точно збігався з тим, що ти відкриваєш
+      - "traefik.http.routers.app.rule=Host(`app.34.38.147.88.nip.io`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls=true"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.app.loadbalancer.server.port=8080"
     deploy:
       resources:
         limits:
-          cpus: "0.5"       # 50% one core
+          cpus: "0.5"
           memory: 256M
-        reservations:
-          cpus: "0.25"      # garant minimum
-          memory: 128M
-
-    # Log rotation
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
-    # Environment variables (if needed)
-    environment:
-      - NODE_ENV=production
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.34.38.147.88.nip.io`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls=true"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # --- Traefik Reverse Proxy ---
+  traefik:
+    image: traefik:v3.3-alpine
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=false"
+      # Розділили аргументи на різні рядки:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=romashka99k@gmail.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
+    networks:
+      - app-network
+
+volumes:
+  portainer-data:
+  traefik-certs:
+
+networks:
+  app-network:
+    driver: bridge
