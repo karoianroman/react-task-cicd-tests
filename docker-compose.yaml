@@ -9,7 +9,6 @@ services:
       - app-network
     labels:
       - "traefik.enable=true"
-      # Додано префікс app. щоб домен точно збігався з тим, що ти відкриваєш
       - "traefik.http.routers.app.rule=Host(`app.34.38.147.88.nip.io`)"
       - "traefik.http.routers.app.entrypoints=websecure"
       - "traefik.http.routers.app.tls=true"
