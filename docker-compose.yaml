@@ -63,7 +63,6 @@ services:
     container_name: traefik
     restart: unless-stopped
     command:
-      - "--log.level=DEBUG"
       - "--api.insecure=false"
       # Розділили аргументи на різні рядки:
       - "--providers.docker=true"
