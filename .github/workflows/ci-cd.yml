@@ -1,4 +1,4 @@
-name: 🚀 Enterprise Deploy to Google Cloud Run
+name: 🚀 Enterprise DevSecOps Pipeline to Google Cloud Run
 
 'on':
   push:
@@ -11,76 +11,39 @@ permissions:
   id-token: write
 
 jobs:
-  setup-environment:
-    name: 🔍 Determine Environment
+  # ==========================================
+  # JOB 1: ТЕСТУВАННЯ ТА ВСІ ПЕРЕВІРКИ БЕЗПЕКИ
+  # ==========================================
+  security-and-testing:
+    name: 🛡️ Security, Lint & Test
     runs-on: ubuntu-latest
-    outputs:
-      target_env: ${{ steps.set-env.outputs.target_env }}
-    steps:
-      - id: set-env
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            echo "target_env=staging" >> $GITHUB_OUTPUT
-          else
-            echo "target_env=production" >> $GITHUB_OUTPUT
-          fi
-
-  deploy:
-    name: 🏗️ Build & Deploy
-    needs: setup-environment
-    runs-on: ubuntu-latest
-    
-    # --- GitHub автоматично підтягує потрібний блок secrets/vars ---
-    environment: ${{ needs.setup-environment.outputs.target_env }}
-
-    env:
-      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-      SERVICE_NAME: ${{ vars.GCP_SERVICE_NAME }}
-      REGION: europe-west1
-      REPOSITORY: react-repo
-      WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
-      SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      IMAGE_NAME: europe-west1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/react-repo/${{ vars.GCP_SERVICE_NAME }}
-
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --- ПЕРЕВІРКА БЕЗПЕКИ КОДУ ---
-      - name: 🔐 Check for secrets
+      # 1. Перевірка на витік секретів у коді
+      - name: 🔐 Gitleaks Secret Scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🔍 Lint Dockerfile
+      # 2. Перевірка Dockerfile на помилки та Best Practices
+      - name: 🔍 Hadolint Dockerfile Lint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
 
-      # --- АВТЕНТИФІКАЦІЯ WIF ---
-      - name: 🔐 Google Auth
-        uses: google-github-actions/auth@v2
+      # 3. Аналіз Infrastructure-as-Code (якщо є Terraform файли)
+      - name: 🏗️ Checkov IaC Scan
+        uses: bridgecrewio/checkov-action@master
         with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
-          service_account: ${{ env.SERVICE_ACCOUNT }}
+          framework: all
+          output_format: cli
+          soft_fail: true # Не зупиняє пайплайн, якщо є мінорні зауваження до інфраструктури
 
-      - name: ⚙️ Setup Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: 🐳 Docker Auth
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-
-      # --- ЗЧИТУВАННЯ СЕКРЕТІВ З GCP SECRET MANAGER ---
-      - name: 🔑 Fetch Secrets from GCP Secret Manager
-        id: secrets
-        uses: google-github-actions/get-secretmanager-secrets@v2
-        with:
-          secrets: |-
-            API_KEY:${{ env.PROJECT_ID }}/REACT_APP_API_KEY
-
-      # --- ЗБІРКА ТА ЛІНТИНГ ДОДАТКА ---
+      # 4. Налаштування Node.js для ESLint та npm tests
       - name: 📦 Install pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -95,27 +58,90 @@ jobs:
       - name: 📥 Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔍 Lint
+      # 5. Перевірка якості коду (ESLint)
+      - name: 💻 Run ESLint
         run: pnpm lint
 
-      # --- ЗБІРКА КОНТЕЙНЕРА ТА СКАНУВАННЯ БЕЗПЕКИ ---
+      # 6. Запуск юніт-тестів додатка
+      - name: 🧪 Run npm tests
+        run: pnpm test -- --watchAll=false --passWithNoTests
+
+  # ==========================================
+  # JOB 2: АВТОМАТИЧНИЙ ВИБІР СЕРЕДОВИЩА ТА ДЕПЛОЙ
+  # ==========================================
+  deploy:
+    name: 🏗️ Build & Deploy
+    needs: security-and-testing # Деплой запуститься ТІЛЬКИ якщо тести пройшли успішно
+    runs-on: ubuntu-latest
+    
+    outputs:
+      target_env: ${{ steps.set-env.outputs.target_env }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # Динамічно визначаємо Environment (staging або production)
+      - id: set-env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "target_env=staging" >> $GITHUB_OUTPUT
+          else
+            echo "target_env=production" >> $GITHUB_OUTPUT
+          fi
+
+  actual-deploy:
+    name: 🚀 Cloud Run Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: ${{ needs.deploy.outputs.target_env }}
+
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      SERVICE_NAME: ${{ vars.GCP_SERVICE_NAME }}
+      REGION: europe-west1
+      REPOSITORY: react-repo
+      WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      IMAGE_NAME: europe-west1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/react-repo/${{ vars.GCP_SERVICE_NAME }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # Аутентифікація в GCP через WIF
+      - name: 🔐 Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: ⚙️ Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: 🐳 Docker Auth
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # Збірка локального контейнера для сканування безпеки
       - name: 🛠️ Build Local Container for Scan
         run: |
           docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
-      - name: 🛡️ Trivy security scan
+      # 7. Сканування готового Docker-образу на вразливості ОС та пакетів
+      - name: 🛡️ Trivy Container Security Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           scan-type: 'image'
           severity: CRITICAL,HIGH
-          exit-code: '1'
+          exit-code: '1' # Пайплайн впаде, якщо знайдено критичні діри в образі
 
+      # Пуш образу в Google Artifact Registry після успішного сканування
       - name: 📤 Push Container to Artifact Registry
         run: |
           docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      # --- ДЕПЛОЙ НА GOOGLE CLOUD RUN ---
+      # Деплой на Cloud Run із передачею секрету НАПРЯМУ з GitHub
       - name: 🚀 Deploy to Cloud Run
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -124,7 +150,7 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           env_vars: |
-            REACT_APP_API_KEY=${{ steps.secrets.outputs.API_KEY }}
+            REACT_APP_API_KEY=${{ secrets.REACT_APP_API_KEY }}
           flags: >-
             --allow-unauthenticated
             --cpu=0.7
@@ -133,12 +159,11 @@ jobs:
             --min-instances=0
             --max-instances=1
 
-      # --- АВТОМАТИЧНИЙ SMOKE TEST ---
+      # Автоматичний Smoke Test
       - name: 🔥 Smoke test
         run: |
           URL="${{ steps.deploy.outputs.url }}"
           echo "Testing live application at: $URL"
-          
           for i in {1..5}; do
             STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$URL" || echo "failed")
             if [ "$STATUS" == "200" ]; then
@@ -148,26 +173,22 @@ jobs:
             echo "⚠️ Attempt $i: App returned status $STATUS. Retrying..."
             sleep 3
           done
-          
           echo "❌ ERROR: Smoke test failed! App is down."
           exit 1
 
-      # --- АВТОМАТИЧНИЙ ROLLBACK ---
+      # Автоматичний Rollback на стабільну версію у разі фейлу тесту
       - name: 🔄 Automatic Rollback on Failure
         if: failure() && steps.deploy.outcome == 'success'
         run: |
           echo "🚨 Smoke test failed! Initiating rollback..."
-          
           PREVIOUS_REVISION=$(gcloud run revisions list \
             --service=${{ env.SERVICE_NAME }} \
             --region=${{ env.REGION }} \
             --format="value(metadata.name)" | sed -n '2p')
-          
           if [ -z "$PREVIOUS_REVISION" ]; then
             echo "⛔ No previous revision found for rollback!"
             exit 1
           fi
-          
           echo "🔄 Redirecting 100% of traffic to stable revision: $PREVIOUS_REVISION"
           gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
             --region=${{ env.REGION }} \
