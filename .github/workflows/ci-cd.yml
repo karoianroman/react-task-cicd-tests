@@ -1,24 +1,38 @@
-name: 🚀 Deploy to Google Cloud Run
+name: 🚀 Enterprise Deploy to Google Cloud Run
 
 'on':
   push:
     branches:
       - main
-      - master
+      - develop
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  setup-environment:
+    name: 🔍 Determine Environment
+    runs-on: ubuntu-latest
+    outputs:
+      target_env: ${{ steps.set-env.outputs.target_env }}
+    steps:
+      - id: set-env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "target_env=staging" >> $GITHUB_OUTPUT
+          else
+            echo "target_env=production" >> $GITHUB_OUTPUT
+          fi
+
   deploy:
     name: 🏗️ Build & Deploy
+    needs: setup-environment
     runs-on: ubuntu-latest
     
-    # --- GitHub Actions автоматично підставить потрібне середовище ---
-    environment: production  # Для стейджу просто зміни на: staging
-    
-    # --- ОДИН РАЗ ЗЧИТУЄМО ВСІ ЗМІННІ ТА СЕКРЕТИ СЕРЕДОВИЩА ---
+    # --- GitHub автоматично підтягує потрібний блок secrets/vars ---
+    environment: ${{ needs.setup-environment.outputs.target_env }}
+
     env:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       SERVICE_NAME: ${{ vars.GCP_SERVICE_NAME }}
@@ -34,7 +48,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # --- ЕТАП БЕЗПЕКИ КОДУ ---
+      # --- ПЕРЕВІРКА БЕЗПЕКИ КОДУ ---
       - name: 🔐 Check for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -45,7 +59,7 @@ jobs:
         with:
           dockerfile: Dockerfile
 
-      # --- АВТЕНТИФІКАЦІЯ (Тепер повністю на універсальних env.*) ---
+      # --- АВТЕНТИФІКАЦІЯ WIF ---
       - name: 🔐 Google Auth
         uses: google-github-actions/auth@v2
         with:
@@ -115,7 +129,7 @@ jobs:
             --allow-unauthenticated
             --cpu=0.7
             --memory=128Mi
-            --concurrency=1
+            --concurrency=80
             --min-instances=0
             --max-instances=1
 
