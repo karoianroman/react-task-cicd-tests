@@ -151,6 +151,7 @@ jobs:
             --concurrency=80
             --min-instances=0
             --max-instances=1
+            --wait
 
       # Автоматичний Smoke Test
       - name: 🔥 Smoke test
