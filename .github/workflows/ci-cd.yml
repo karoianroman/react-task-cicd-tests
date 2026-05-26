@@ -146,12 +146,11 @@ jobs:
           image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           flags: >-
             --allow-unauthenticated
-            --cpu=0.7
+            --cpu=1
             --memory=128Mi
             --concurrency=80
             --min-instances=0
             --max-instances=1
-            --wait
 
       # Автоматичний Smoke Test
       - name: 🔥 Smoke test
