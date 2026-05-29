@@ -41,7 +41,7 @@ jobs:
         with:
           framework: all
           output_format: cli
-          soft_fail: true
+          soft_fail: false
 
       # 4. Налаштування Node.js для ESLint
       - name: 📦 Install pnpm
