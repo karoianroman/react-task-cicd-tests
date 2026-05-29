@@ -153,6 +153,7 @@ jobs:
             --concurrency=80
             --min-instances=0
             --max-instances=1
+             --service-account=cloudrun-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
 
       # Автоматичний Smoke Test
       - name: 🔥 Smoke test
