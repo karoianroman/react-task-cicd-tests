@@ -58,7 +58,12 @@ jobs:
 
       # 5. Перевірка якості коду (ESLint)
       - name: 💻 Run ESLint
-        run: pnpm exec eslint . --fix --debug 2>&1 | head -50 || echo "Лінтер знайшов помилки, але ми продовжуємо"
+        run: |
+          echo "PATH: $PATH"
+          echo "PNPM_HOME: $PNPM_HOME"
+          ls $PNPM_HOME
+          pnpm exec eslint --version
+          pnpm exec eslint . --fix || echo "Лінтер знайшов помилки, але ми продовжуємо"
   # ==========================================
   # JOB 2: АВТОМАТИЧНИЙ ВИБІР СЕРЕДОВИЩА ТА ДЕПЛОЙ
   # ==========================================
