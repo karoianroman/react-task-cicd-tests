@@ -64,7 +64,6 @@ services:
     restart: unless-stopped
     command:
       - "--api.insecure=false"
-      # Розділили аргументи на різні рядки:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"

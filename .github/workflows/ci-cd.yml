@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -41,18 +41,16 @@ jobs:
         with:
           framework: all
           output_format: cli
-          soft_fail: true
+          soft_fail: false
 
       # 4. Налаштування Node.js для ESLint
       - name: 📦 Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
+        uses: pnpm/action-setup@v6
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: pnpm
 
       - name: 📥 Install dependencies
@@ -60,7 +58,10 @@ jobs:
 
       # 5. Перевірка якості коду (ESLint)
       - name: 💻 Run ESLint
-        run: pnpm lint -- --fix || echo "Лінтер знайшов помилки, але ми продовжуємо"
+        run: |
+          echo "=== Starting ESLint ==="
+          pnpm exec eslint . --fix
+          echo "=== ESLint finished ==="
 
   # ==========================================
   # JOB 2: АВТОМАТИЧНИЙ ВИБІР СЕРЕДОВИЩА ТА ДЕПЛОЙ
@@ -75,7 +76,7 @@ jobs:
     
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - id: set-env
         run: |
@@ -102,7 +103,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Аутентифікація в GCP через WIF
       - name: 🔐 Google Auth
@@ -151,6 +152,7 @@ jobs:
             --concurrency=80
             --min-instances=0
             --max-instances=1
+             --service-account=cloudrun-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
 
       # Автоматичний Smoke Test
       - name: 🔥 Smoke test
